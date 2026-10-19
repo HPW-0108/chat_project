@@ -1,0 +1,13 @@
+# 网关服务配置
+gateway.port = 8000
+gateway.threads = 4
+gateway.host = gateway
+
+# Redis配置 (消息中间件)
+redis.host = redis
+redis.port = 6379
+redis.password =
+
+# Guardian服务地址
+guardian.host = guardian
+guardian.port = 9000

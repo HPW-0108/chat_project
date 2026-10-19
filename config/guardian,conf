@@ -1,0 +1,3 @@
+# Guardian服务配置
+guardian.port = 9000
+

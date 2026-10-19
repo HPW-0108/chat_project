@@ -1,0 +1,19 @@
+# 认证服务配置 (Redis消费者模式)
+auth.host = auth_service
+
+# Redis配置
+redis.host = redis
+redis.port = 6379
+redis.password =
+
+# Guardian服务地址
+guardian.host = guardian
+guardian.port = 9000
+
+# MySQL配置
+mysql.host = mysql
+mysql.port = 3306
+mysql.user = root
+mysql.password = chat123456
+mysql.database = chat_db
+mysql.pool_size = 5

@@ -1,0 +1,138 @@
+version: '3.8'
+
+services:
+  # MySQL数据库
+  mysql:
+    image: mysql:8.0
+    container_name: chat_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: chat123456
+      MYSQL_DATABASE: chat_db
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../config/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - chat_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pchat123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis消息中间件
+  redis:
+    image: redis:7-alpine
+    container_name: chat_redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - chat_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Guardian服务注册中心
+  guardian:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: chat_guardian
+    command: ["./guardian_service config/guardian.conf"]
+    ports:
+      - "9000:9000"
+    networks:
+      - chat_net
+    depends_on:
+      - mysql
+    restart: unless-stopped
+
+  # 网关服务
+  gateway:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: chat_gateway
+    command: ["./gateway config/gateway.conf"]
+    ports:
+      - "8000:8000"
+    networks:
+      - chat_net
+    depends_on:
+      redis:
+        condition: service_healthy
+      guardian:
+        condition: service_started
+    restart: unless-stopped
+
+  # 认证服务 (Redis消费者)
+  auth_service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: chat_auth
+    command: ["./auth_service config/auth.conf"]
+    networks:
+      - chat_net
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      guardian:
+        condition: service_started
+    restart: unless-stopped
+
+  # 聊天服务 (Redis消费者)
+  chat_service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: chat_chat
+    command: ["./chat_service config/chat.conf"]
+    networks:
+      - chat_net
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      guardian:
+        condition: service_started
+    restart: unless-stopped
+
+  # 第二个聊天服务实例
+  chat_service_2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: chat_chat_2
+    command: ["./chat_service config/chat.conf"]
+    networks:
+      - chat_net
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      guardian:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  chat_net:
+    driver: bridge
+
