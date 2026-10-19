@@ -1,0 +1,9 @@
+build/
+bin/
+*.o
+*.so
+*.a
+*.log
+.vscode/
+.idea/
+.DS_Store
